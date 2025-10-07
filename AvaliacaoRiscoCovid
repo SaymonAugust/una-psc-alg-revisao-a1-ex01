@@ -1,0 +1,133 @@
+import java.util.Scanner;
+
+public class AvaliacaoRiscoCovid {
+
+    // Mensagem exibida quando o usuário erra 3 vezes nas perguntas SIM/NAO
+    private static final String ERRO_TRIPLO =
+        "Não foi possível realizar o diagnóstico.\n" +
+        "Gentileza procurar ajuda médica caso apareça algum sintoma.";
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        System.out.println("=== Avaliação Rápida de Risco - Paiva Ltda ===\n");
+
+        // Leitura e validação do nome
+        String nome = "";
+        while (nome.isBlank()) {
+            System.out.print("Informe o seu nome: ");
+            nome = sc.nextLine().trim();
+            if (nome.isBlank()) {
+                System.out.println("Nome inválido. Por favor insira um nome não vazio.");
+            }
+        }
+
+        // Leitura e validação da idade (inteiro >= 0)
+        int idade = -1;
+        while (true) {
+            System.out.print("Informe a sua idade: ");
+            String linha = sc.nextLine().trim();
+            try {
+                idade = Integer.parseInt(linha);
+                if (idade < 0) {
+                    System.out.println("Idade inválida. Informe um número inteiro não negativo.");
+                } else break;
+            } catch (NumberFormatException e) {
+                System.out.println("Idade inválida. Digite um número inteiro.");
+            }
+        }
+
+        // Perguntas SIM/NAO - cada uma aceita até 3 tentativas
+        Boolean cartaoVacinacaoEmDia = askYesNoWithRetries(sc,
+            "Seu cartão de vacina está em dia?");
+        if (cartaoVacinacaoEmDia == null) { System.out.println("\n" + ERRO_TRIPLO); sc.close(); return; }
+
+        Boolean teveSintomasRecentes = askYesNoWithRetries(sc,
+            "Teve algum dos sintomas recentemente? (dor de cabeça, febre, náusea, dor articular, gripe)");
+        if (teveSintomasRecentes == null) { System.out.println("\n" + ERRO_TRIPLO); sc.close(); return; }
+
+        Boolean teveContatoComInfectado = askYesNoWithRetries(sc,
+            "Teve contato com pessoas com sintomas gripais nos últimos dias?");
+        if (teveContatoComInfectado == null) { System.out.println("\n" + ERRO_TRIPLO); sc.close(); return; }
+
+        Boolean retornouViagemExterior = askYesNoWithRetries(sc,
+            "Está retornando de viagem realizada no exterior?");
+        if (retornouViagemExterior == null) { System.out.println("\n" + ERRO_TRIPLO); sc.close(); return; }
+
+        // Cálculo da probabilidade (percentual)
+        int percentual = 0;
+        // Cartão vacinal: se NÃO está em dia => +10%
+        if (!cartaoVacinacaoEmDia) percentual += 10;
+
+        // Sintomas recentes: SIM => +30%
+        if (teveSintomasRecentes) percentual += 30;
+
+        // Contato com infectado: SIM => +30%
+        if (teveContatoComInfectado) percentual += 30;
+
+        // Retorno de viagem: SIM => +30%
+        if (retornouViagemExterior) percentual += 30;
+
+        // Determinar orientação final com base no percentual (seguindo as regras do enunciado)
+        String orientacao;
+        if (percentual <= 30) {
+            // caso de menor risco — diferencia retorno de viagem
+            if (retornouViagemExterior) {
+                orientacao = "Você ficará sob observação por 05 dias.";
+            } else {
+                orientacao = "Paciente sob observação. Caso apareça algum sintoma, gentileza buscar assistência médica.";
+            }
+        } else if (percentual > 30 && percentual <= 60) {
+            orientacao = "Paciente com risco de estar infectado. Gentileza aguardar em lockdown por 02 dias para ser acompanhado.";
+        } else if (percentual > 60 && percentual < 90) {
+            orientacao = "Paciente com alto risco de estar infectado. Gentileza aguardar em lockdown por 05 dias para ser acompanhado.";
+        } else { // percentual >= 90
+            orientacao = "Paciente crítico! Gentileza aguardar em lockdown por 10 dias para ser acompanhado";
+        }
+
+        // Impressão do relatório final
+        System.out.println("\n=== Relatório da Avaliação ===");
+        System.out.println("Nome: " + nome);
+        System.out.println("Idade: " + idade);
+        System.out.println("Cartão de vacina em dia: " + (cartaoVacinacaoEmDia ? "SIM" : "NAO"));
+        System.out.println("Teve sintomas recentemente: " + (teveSintomasRecentes ? "SIM" : "NAO"));
+        System.out.println("Teve contato com pessoas infectadas: " + (teveContatoComInfectado ? "SIM" : "NAO"));
+        System.out.println("Retornando de viagem do exterior: " + (retornouViagemExterior ? "SIM" : "NAO"));
+        System.out.println("Probabilidade de estar infectado: " + percentual + "%");
+        System.out.println("Orientação final: " + orientacao);
+
+        sc.close();
+    }
+
+    /**
+     * Faz a pergunta do tipo SIM/NAO com até 3 tentativas.
+     * Retorna:
+     *   - Boolean.TRUE para SIM
+     *   - Boolean.FALSE para NAO
+     *   - null se o usuário errou 3 vezes (processo falhou)
+     */
+    private static Boolean askYesNoWithRetries(Scanner sc, String pergunta) {
+        final int MAX_TENTATIVAS = 3;
+        int tentativas = 0;
+
+        while (tentativas < MAX_TENTATIVAS) {
+            System.out.print(pergunta + " (SIM/NAO): ");
+            String resposta = sc.nextLine().trim();
+
+            if (resposta.equalsIgnoreCase("SIM") || resposta.equalsIgnoreCase("S")) {
+                return Boolean.TRUE;
+            }
+            if (resposta.equalsIgnoreCase("NAO") || resposta.equalsIgnoreCase("N") ||
+                resposta.equalsIgnoreCase("NÃO")) {
+                return Boolean.FALSE;
+            }
+
+            tentativas++;
+            if (tentativas < MAX_TENTATIVAS) {
+                System.out.println("Resposta inválida. Tente novamente (" + (MAX_TENTATIVAS - tentativas) + " tentativas restantes).");
+            }
+        }
+        // Esgotou as tentativas.
+        return null;
+    }
+}
